@@ -1,0 +1,147 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background-color: #f4f6f8;
+  color: #1a1a1a;
+  padding: 20px;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+header h1 {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+header p {
+  color: #555;
+  font-size: 14px;
+}
+
+section {
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 25px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+section h2 {
+  font-size: 18px;
+  margin-bottom: 15px;
+}
+
+input, select, button {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+button {
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #1d4ed8;
+}.problem-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.problem-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.tag {
+  background-color: #e0e7ff;
+  color: #3730a3;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.problem-card a {
+  font-size: 13px;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.next-review {
+  font-size: 13px;
+  color: #555;
+  margin: 8px 0;
+}
+
+.rating-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.rating-buttons button {
+  flex: 1;
+  margin-bottom: 0;
+  padding: 8px;
+  font-size: 13px;
+}
+
+.easy-btn {
+  background-color: #16a34a;
+}
+
+.easy-btn:hover {
+  background-color: #15803d;
+}
+
+.medium-btn {
+  background-color: #ea580c;
+}
+
+.medium-btn:hover {
+  background-color: #c2410c;
+}
+
+.forgot-btn {
+  background-color: #dc2626;
+}
+
+.forgot-btn:hover {
+  background-color: #b91c1c;
+}
+
+.delete-btn {
+  background-color: transparent;
+  color: #dc2626;
+  border: 1px solid #dc2626;
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.delete-btn:hover {
+  background-color: #fef2f2;
+}
+

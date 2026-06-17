@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DSA Revision Tracker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header>
+    <h1>📚 DSA Revision Tracker</h1>
+    <p>Never forget a problem you've already solved.</p>
+  </header>
+
+  <section class="add-problem">
+    <h2>Add a Problem</h2>
+    <input type="text" id="problemName" placeholder="Problem name (e.g. Two Sum)">
+    <input type="text" id="problemLink" placeholder="Link (optional)">
+    <select id="problemTag">
+      <option value="Array">Array</option>
+      <option value="String">String</option>
+      <option value="Binary Search">Binary Search</option>
+      <option value="Two Pointers">Two Pointers</option>
+      <option value="Recursion">Recursion</option>
+      <option value="DP">Dynamic Programming</option>
+      <option value="Graph">Graph</option>
+      <option value="Other">Other</option>
+    </select>
+    <button id="addBtn">Add Problem</button>
+  </section>
+
+  <section class="review-today">
+    <h2>🔁 Due for Review Today</h2>
+    <div id="reviewList"></div>
+  </section>
+
+  <section class="all-problems">
+    <h2>📋 All Problems</h2>
+    <div id="allList"></div>
+  </section>
+
+  <script src="script.js"></script>
+</body>
+</html>
