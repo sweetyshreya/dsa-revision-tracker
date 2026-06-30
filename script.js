@@ -1,186 +1,338 @@
-// Grab references to the HTML elements we need, using their IDs
-const addBtn = document.getElementById('addBtn');
-const problemNameInput = document.getElementById('problemName');
-const problemLinkInput = document.getElementById('problemLink');
-const problemTagInput = document.getElementById('problemTag');
-const allListDiv = document.getElementById('allList');
+/* ===========================================================
+   DSA TRACKER — APPLICATION LOGIC
+   Read top to bottom — organized in the order things happen
+   when you actually use the app.
+=========================================================== */
 
-// This array will hold all our problems in memory
-let problems = [];
+/* ---------- 1. SPACED REPETITION SCHEDULE ----------
+   The "smart" part of the app. Each successful review pushes
+   the next review further away — same idea as Anki, a
+   simplified version of the SM-2 algorithm.
 
-const savedData = localStorage.getItem('dsaProblems');
-if (savedData) {
-  problems = JSON.parse(savedData);
+   Review 1 -> wait 1 day
+   Review 2 -> wait 3 days
+   Review 3 -> wait 7 days
+   Review 4 -> wait 14 days
+   Review 5 -> wait 30 days
+
+After reaching the fifth revision, the problem enters
+Monthly Revision Mode.
+
+Every future review is scheduled after 30 days to
+keep the concept fresh without making the interval
+too long.
+------------------------------------------------------------ */
+const INTERVALS = [1, 3, 7, 14, 30];
+
+/* ---------- 2. STATE ----------
+   `problems` is the single source of truth — an array of
+   objects, loaded from localStorage on page load and saved
+   back every time something changes.
+------------------------------------------------------------ */
+let problems = JSON.parse(localStorage.getItem('dsa_problems') || '[]');
+let editingId = null;       // which problem is being edited (null = adding new)
+let currentFilter = 'all';  // which filter tab is active
+
+function save() {
+  localStorage.setItem('dsa_problems', JSON.stringify(problems));
+  render();
 }
 
-renderProblems();
+/* ---------- 3. DATE HELPERS ---------- */
 
-// When the Add button is clicked, run this function
-addBtn.addEventListener('click', function() {
-  
-  // Get the values the user typed/selected
-  const name = problemNameInput.value;
-  const link = problemLinkInput.value;
-  const tag = problemTagInput.value;
+function todayStr() {
+  return new Date().toISOString().split('T')[0];
+}
 
-  // Don't add an empty problem if the name box is blank
-  if (name === '') {
-    alert('Please enter a problem name!');
+function daysFromNow(n) {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return d.toISOString().split('T')[0];
+}
+
+function daysBetween(dateStr) {
+  const today = new Date(todayStr());
+  const target = new Date(dateStr);
+  return Math.round((target - today) / (1000 * 60 * 60 * 24));
+}
+
+function getStatus(p) {
+  const diff = daysBetween(p.nextReview);
+  if (diff < 0) return 'overdue';
+  if (diff === 0) return 'today';
+  return 'upcoming';
+}
+
+function dueLabel(p) {
+  const diff = daysBetween(p.nextReview);
+  if (diff < 0) {
+    return { text: `Overdue by ${Math.abs(diff)} day${Math.abs(diff) > 1 ? 's' : ''}`, cls: 'urgent' };
+  }
+  if (diff === 0) {
+    return { text: 'Due today', cls: 'today' };
+  }
+  return { text: `Due in ${diff} day${diff > 1 ? 's' : ''}`, cls: '' };
+}
+
+/* ---------- 4. MODAL (ADD / EDIT FORM) ---------- */
+
+function openModal(id = null) {
+  editingId = id;
+  document.getElementById('modalOverlay').classList.add('open');
+
+  if (id) {
+    const p = problems.find(x => x.id === id);
+    document.getElementById('modalTitle').textContent = 'Edit Problem';
+    document.getElementById('probName').value = p.name;
+    document.getElementById('probTopic').value = p.topic;
+    document.getElementById('probDifficulty').value = p.difficulty;
+  } else {
+    document.getElementById('modalTitle').textContent = 'Add Problem';
+    document.getElementById('probName').value = '';
+    document.getElementById('probTopic').value = '';
+    document.getElementById('probDifficulty').value = 'medium';
+  }
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  editingId = null;
+}
+
+function saveProblem() {
+  const name = document.getElementById('probName').value.trim();
+  const topic = document.getElementById('probTopic').value.trim() || 'General';
+  const difficulty = document.getElementById('probDifficulty').value;
+
+  if (!name) {
+    alert('Please enter a problem name.');
     return;
   }
 
-  // Create a problem object to store all its info together
-  const newProblem = {
-    name: name,
-    link: link,
-    tag: tag
-  };
-
-  // Add it to our array
-  problems.push(newProblem);
-
-  // Clear the input boxes after adding
-  problemNameInput.value = '';
-  problemLinkInput.value = '';
-
-  // Re-draw the list on screen
-  saveProblems();
-  renderProblems();
-});
-
-// This function takes the 'problems' array and displays it on the page
-function renderProblems() {
-  
-  allListDiv.innerHTML = '';
-
-  const reviewListDiv = document.getElementById('reviewList');
-  reviewListDiv.innerHTML = '';
-
-  const dueProblems = getDueProblems();
-
-  if (dueProblems.length === 0) {
-    reviewListDiv.innerHTML = '<p>Nothing due today. 🎉</p>';
+  if (editingId) {
+    const p = problems.find(x => x.id === editingId);
+    p.name = name;
+    p.topic = topic;
+    p.difficulty = difficulty;
   } else {
-    dueProblems.forEach(function(problem) {
-      const reviewCard = document.createElement('div');
-      reviewCard.innerHTML = `<strong>${problem.name}</strong> — ${problem.tag}`;
-      reviewCard.style.padding = '8px';
-      reviewCard.style.borderBottom = '1px solid #eee';
-      reviewListDiv.appendChild(reviewCard);
+    problems.push({
+      id: Date.now(),
+      name,
+      topic,
+      difficulty,
+      reviewCount: 0,
+      nextReview: todayStr(),
+      addedOn: todayStr()
     });
   }
 
-  problems.forEach(function(problem, index) {
-    
-    const card = document.createElement('div');
-    card.className = 'problem-card';
+  closeModal();
+  save();
+}
 
-    let linkHTML = '';
-    if (problem.link !== '') {
-      linkHTML = `<a href="${problem.link}" target="_blank">🔗 View Problem</a>`;
-    }
+/* ---------- 5. ACTIONS: REVIEW UNDO DELETE ---------- */
 
-    card.innerHTML = `
-  <div class="problem-top">
-    <strong>${problem.name}</strong> 
-    <span class="tag">${problem.tag}</span>
-  </div>
-  ${linkHTML}
-  <p class="next-review">📅 Next review: ${problem.nextReview ? problem.nextReview : 'Not rated yet'}</p>
-  <div class="rating-buttons">
-        <button class="easy-btn" data-index="${index}">Easy</button>
-        <button class="medium-btn" data-index="${index}">Medium</button>
-        <button class="forgot-btn" data-index="${index}">Forgot</button>
-        <button class="delete-btn" data-index="${index}">Delete</button>
+function markReviewed(id) {
+
+const p = problems.find(x => x.id === id);
+
+const interval =
+INTERVALS[Math.min(p.reviewCount, INTERVALS.length-1)];
+
+p.reviewCount++;
+
+p.nextReview = daysFromNow(interval);
+
+save();
+
+if(p.reviewCount >= INTERVALS.length){
+
+    alert(
+`🎉 Great!
+
+This problem has reached Monthly Revision Mode.
+
+From now on, every successful revision schedules the next review after 30 days to keep the concept fresh.`
+    );
+
+}else{
+
+    alert(
+`✅ Revision completed!
+
+Next revision scheduled after ${interval} day${interval>1?"s":""}.`
+    );
+
+}
+
+}
+
+function undoReview(id){
+
+const p = problems.find(x=>x.id===id);
+
+if(!p || p.reviewCount===0){
+
+return;
+
+}
+
+p.reviewCount--;
+
+const interval =
+INTERVALS[Math.min(p.reviewCount,INTERVALS.length-1)];
+
+p.nextReview = daysFromNow(interval);
+
+save();
+
+alert(
+`↩ Last revision undone.
+
+Next review is scheduled in ${interval} day${interval>1?"s":""}.`
+);
+
+}
+
+function deleteProblem(id) {
+  if (confirm('Remove this problem from your tracker?')) {
+    problems = problems.filter(x => x.id !== id);
+    save();
+  }
+}
+
+/* ---------- 6. FILTERS ---------- */
+
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.filter === f);
+  });
+  render();
+}
+
+/* ---------- 7. RENDERING ----------
+   These functions only READ the `problems` array and turn it
+   into HTML — they never change data directly.
+------------------------------------------------------------ */
+
+function renderStats() {
+  const overdue = problems.filter(p => getStatus(p) === 'overdue').length;
+  const today = problems.filter(p => getStatus(p) === 'today').length;
+  const upcoming = problems.filter(p => getStatus(p) === 'upcoming').length;
+  const total = problems.length;
+
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat-card accent-purple">
+      <div class="value">${total}</div>
+      <div class="label">Total Problems</div>
+    </div>
+    <div class="stat-card accent-red">
+      <div class="value">${overdue}</div>
+      <div class="label">Overdue</div>
+    </div>
+    <div class="stat-card accent-yellow">
+      <div class="value">${today}</div>
+      <div class="label">Due Today</div>
+    </div>
+    <div class="stat-card accent-green">
+      <div class="value">${upcoming}</div>
+      <div class="label">Upcoming</div>
+    </div>
+  `;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function render() {
+  renderStats();
+
+  let list = problems.slice();
+  if (currentFilter !== 'all') {
+    list = list.filter(p => getStatus(p) === currentFilter);
+  }
+
+  list.sort((a, b) => daysBetween(a.nextReview) - daysBetween(b.nextReview));
+
+  const container = document.getElementById('problemList');
+
+  if (list.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="emoji">🎯</div>
+        <h3>${problems.length === 0 ? 'No problems yet' : 'Nothing here'}</h3>
+        <p>${problems.length === 0 ? 'Add your first problem to start tracking revisions.' : 'Try a different filter.'}</p>
       </div>
     `;
+    return;
+  }
 
-    allListDiv.appendChild(card);
-  });
+  container.innerHTML = list.map(p => {
+    const status = getStatus(p);
+    const due = dueLabel(p);
+    const statusClass = status === 'overdue' ? 'overdue' : status === 'today' ? 'due-today' : 'upcoming';
 
-  attachRatingButtons();
-}
-
-function saveProblems() {
-  localStorage.setItem('dsaProblems', JSON.stringify(problems));
-}
-
-function getDueProblems() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0); // ignore time, only compare dates
-
-  const dueProblems = [];
-
-  problems.forEach(function(problem) {
-    if (problem.nextReview) {
-      const reviewDate = new Date(problem.nextReview);
-      reviewDate.setHours(0, 0, 0, 0);
-
-      if (reviewDate <= today) {
-        dueProblems.push(problem);
-      }
+    return `
+      <div class="problem-card ${statusClass}">
+        <div class="problem-main">
+          <div class="problem-title">${escapeHtml(p.name)}</div>
+          <div class="problem-meta">
+            <span class="tag topic">${escapeHtml(p.topic)}</span>
+            <span class="tag difficulty-${p.difficulty}">${p.difficulty}</span>
+            <span class="due-info ${due.cls}">${due.text}</span>
+          </div>
+        </div>
+        <span class="review-count">
+    Revision Count: ${p.reviewCount}
+    <br>
+    ${
+        p.reviewCount >= INTERVALS.length
+        ? "Monthly Review (Every 30 Days)"
+        : `Next Interval: ${INTERVALS[p.reviewCount]} Day${INTERVALS[p.reviewCount] > 1 ? "s" : ""}`
     }
-  });
+        </span>
+        <div class="problem-actions">
 
-  return dueProblems;
+<button class="action-btn review"
+onclick="markReviewed(${p.id})">
+✓ Finished Revision
+</button>
+
+<button class="action-btn undo"
+onclick="undoReview(${p.id})"
+${p.reviewCount===0 ? "disabled" : ""}>
+↩ Undo
+</button>
+
+<button class="action-btn edit"
+onclick="openModal(${p.id})">
+✏ Edit
+</button>
+
+<button class="action-btn delete"
+onclick="deleteProblem(${p.id})">
+🗑 Delete
+</button>
+
+</div>
+        
+      </div>
+    `;
+  }).join('');
 }
 
+/* ---------- 8. EVENT LISTENERS & STARTUP ---------- */
 
-function attachRatingButtons() {
-  const easyBtns = document.querySelectorAll('.easy-btn');
-  const mediumBtns = document.querySelectorAll('.medium-btn');
-  const forgotBtns = document.querySelectorAll('.forgot-btn');
-
-  easyBtns.forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      const index = btn.getAttribute('data-index');
-      setNextReview(index, 7);
-    });
-  });
-
-  mediumBtns.forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      const index = btn.getAttribute('data-index');
-      setNextReview(index, 3);
-    });
-  });
-
-  forgotBtns.forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      const index = btn.getAttribute('data-index');
-      setNextReview(index, 1);
-    });
-  });
-
-  const deleteBtns = document.querySelectorAll('.delete-btn');
-
-deleteBtns.forEach(function(btn) {
-  btn.addEventListener('click', function() {
-    const index = btn.getAttribute('data-index');
-    
-    const confirmDelete = confirm('Delete this problem?');
-    if (confirmDelete) {
-      problems.splice(index, 1);
-      saveProblems();
-      renderProblems();
-    }
-  });
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => setFilter(btn.dataset.filter));
 });
-}
 
-function setNextReview(index, daysFromNow) {
-  
-  // Get today's date
-  const today = new Date();
+document.getElementById('modalOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'modalOverlay') closeModal();
+});
 
-  // Create a new date by adding daysFromNow to today
-  const nextDate = new Date();
-  nextDate.setDate(today.getDate() + daysFromNow);
-
-  // Update the problem in our array with this new review date
-  problems[index].nextReview = nextDate.toDateString();
-
-  // Re-draw the page so the change is visible
-  saveProblems();
-  renderProblems();
-}
+render();

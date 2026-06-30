@@ -8,38 +8,89 @@
 </head>
 <body>
 
-  <header>
-    <h1>📚 DSA Revision Tracker</h1>
-    <p>Never forget a problem you've already solved.</p>
-  </header>
+  <div class="container">
+  
+    <header>
+      <div class="brand">
+        <h1>DSA<span>Tracker</span></h1>
+        <p>Spaced-repetition revision for coding problems</p>
+      </div>
+      <button class="add-btn" onclick="openModal()">+ Add Problem</button>
+    </header>
 
-  <section class="add-problem">
-    <h2>Add a Problem</h2>
-    <input type="text" id="problemName" placeholder="Problem name (e.g. Two Sum)">
-    <input type="text" id="problemLink" placeholder="Link (optional)">
-    <select id="problemTag">
-      <option value="Array">Array</option>
-      <option value="String">String</option>
-      <option value="Binary Search">Binary Search</option>
-      <option value="Two Pointers">Two Pointers</option>
-      <option value="Recursion">Recursion</option>
-      <option value="DP">Dynamic Programming</option>
-      <option value="Graph">Graph</option>
-      <option value="Other">Other</option>
-    </select>
-    <button id="addBtn">Add Problem</button>
-  </section>
+    <div class="stats" id="statsRow"></div>
+    
+  <div class="info-card">
+    <h3>📚 How It Works</h3>
 
-  <section class="review-today">
-    <h2>🔁 Due for Review Today</h2>
-    <div id="reviewList"></div>
-  </section>
+    <p>
+        After completing a revision, click
+        <strong>✓ Finished Revision</strong>.
+    </p>
 
-  <section class="all-problems">
-    <h2>📋 All Problems</h2>
-    <div id="allList"></div>
-  </section>
+    <p>
+        The tracker schedules your next revision using spaced repetition:
+    </p>
+
+    <div class="schedule">
+        <span>1 day</span>
+        <span>3 days</span>
+        <span>7 days</span>
+        <span>14 days</span>
+        <span>30 days</span>
+    </div>
+
+    <p class="schedule-note">
+        After the 5th revision, the problem enters
+        <strong>Monthly Revision Mode</strong>.
+        Every future revision is scheduled after
+        <strong>30 days</strong> to keep the concept fresh without making the gap too long.
+    </p>
+
+</div>
+    <div class="filters" id="filterRow">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="overdue">Overdue</button>
+      <button class="filter-btn" data-filter="today">Due Today</button>
+      <button class="filter-btn" data-filter="upcoming">Upcoming</button>
+    </div>
+
+    <div class="problem-list" id="problemList"></div>
+
+  </div>
+
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <h2 id="modalTitle">Add Problem</h2>
+
+      <div class="form-group">
+        <label>Problem Name</label>
+        <input type="text" id="probName" placeholder="e.g. Two Sum">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Topic</label>
+          <input type="text" id="probTopic" placeholder="e.g. Arrays">
+        </div>
+        <div class="form-group">
+          <label>Difficulty</label>
+          <select id="probDifficulty">
+            <option value="easy">Easy</option>
+            <option value="medium" selected>Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+        <button class="btn-save" onclick="saveProblem()">Save</button>
+      </div>
+    </div>
+  </div>
 
   <script src="script.js"></script>
+
 </body>
 </html>
